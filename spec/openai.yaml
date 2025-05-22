@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: MCP Jira API
+  description: Secure MCP server for accessing Jira ticket data.
+  version: 1.0.0
+security:
+  - bearerAuth: []
+servers:
+  - url: https://6759-192-150-10-207.ngrok-free.app
+paths:
+  /ticket/{key}:
+    get:
+      operationId: getJiraTicketByKey
+      summary: Get Jira ticket by key
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The Jira ticket key (e.g. STK-124861)
+      responses:
+        "200":
+          description: Ticket retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JiraTicket"
+        "403":
+          description: Authentication failed
+        "500":
+          description: Internal server error
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    JiraTicket:
+      type: object
+      properties:
+        issueKey:
+          type: string
+        fields:
+          type: object
+        raw:
+          type: object

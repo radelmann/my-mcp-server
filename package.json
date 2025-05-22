@@ -4,7 +4,8 @@
   "description": "Lightweight MCP server for automating API tasks like JIRA ticket management",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+     "dev": "concurrently \"nodemon server.js\" \"ngrok http --url=beloved-surely-robin.ngrok-free.app --log=stdout 5001\""
   },
   "dependencies": {
     "axios": "^1.6.0",
@@ -13,5 +14,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "nodemon": "^3.1.10"
   }
 }
