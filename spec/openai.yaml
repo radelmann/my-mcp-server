@@ -3,11 +3,40 @@ info:
   title: MCP Jira API
   description: Secure MCP server for accessing Jira ticket data.
   version: 1.0.0
+servers:
+  - url: https://***.app
 security:
   - bearerAuth: []
-servers:
-  - url: https://6759-192-150-10-207.ngrok-free.app
 paths:
+  /tickets:
+    get:
+      operationId: getTicketsByTeamAndStatus
+      summary: Get tickets by team and status
+      description: Returns a list of Jira tickets filtered by team name and ticket status.
+      parameters:
+        - name: team
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The team name (e.g., "EComm Demand" or "EComm LTV")
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ticket status (e.g., "Code Review", "Open", "In Development", "In Test", "Close")
+      responses:
+        "200":
+          description: A list of Jira tickets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketListResponse"
+        "400":
+          description: Missing required query parameters
+        "500":
+          description: Internal server error
   /ticket/{key}:
     get:
       operationId: getJiraTicketByKey
@@ -19,6 +48,7 @@ paths:
           schema:
             type: string
           description: The Jira ticket key (e.g. STK-124861)
+          default: STK-124861
       responses:
         "200":
           description: Ticket retrieved successfully
@@ -30,6 +60,37 @@ paths:
           description: Authentication failed
         "500":
           description: Internal server error
+  /ticket/{key}/transition:
+    post:
+      operationId: updateTicketStatus
+      summary: Update Jira ticket status
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The Jira ticket key (e.g. STK-1234)
+          default: STK-124861
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusUpdate"
+      responses:
+        "200":
+          description: Ticket transitioned successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusUpdateResponse"
+        "400":
+          description: Invalid request (e.g. status not found)
+        "403":
+          description: Authentication failed
+        "500":
+          description: Internal server error
 components:
   securitySchemes:
     bearerAuth:
@@ -37,6 +98,30 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    TicketListResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        tickets:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              summary:
+                type: string
+              status:
+                type: string
+              assignee:
+                type: string
+              pullRequests:
+                type: array
+                items:
+                  type: string
+                  format: uri
+                description: Pull request URLs found in ticket comments
     JiraTicket:
       type: object
       properties:
@@ -46,3 +131,18 @@ components:
           type: object
         raw:
           type: object
+    StatusUpdate:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: The name of the target Jira status (e.g. "In Development")
+    StatusUpdateResponse:
+      type: object
+      properties:
+        issueKey:
+          type: string
+        transitionedTo:
+          type: string
