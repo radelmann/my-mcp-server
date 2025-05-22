@@ -1,61 +1,120 @@
 // File: server.js
 const express = require("express");
-const axios = require("axios");
-require("dotenv").config(); // This must be at the top
+require("dotenv").config();
 
 console.log("Starting MCP server...");
 
 const app = express();
 app.use(express.json());
 
-const JIRA_API_BASE_URL = process.env.JIRA_API_BASE_URL;
-const JIRA_EMAIL = process.env.JIRA_EMAIL;
-const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN;
-const API_KEY = process.env.MCP_API_KEY;
-const API_SECRET = process.env.MCP_API_SECRET;
-const MAX_AGE = 2 * 60 * 1000; // 2 minutes
-
-const GPT_BEARER_TOKEN = process.env.GPT_BEARER_TOKEN;
-
-// Import and use the auth middleware
+// Import middleware and services
 const authMiddleware = require("./middleware/auth");
-app.use(authMiddleware);
+const JiraService = require("./services/jiraService");
+const { normalizeStatus } = require("./utils/statusUtils");
+const { extractPullRequestLinks } = require("./utils/prUtils");
 
-// Helper to configure basic auth header
-function getAuthHeaders() {
-  const token = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
-  return {
-    Authorization: `Basic ${token}`,
-    Accept: "application/json"
-  };
-}
+// Initialize JIRA service
+const jiraService = new JiraService(
+  process.env.JIRA_API_BASE_URL,
+  process.env.JIRA_EMAIL,
+  process.env.JIRA_API_TOKEN
+);
+
+// Apply auth middleware
+app.use(authMiddleware);
 
 // GET /ticket/:key - fetch JIRA ticket info
 app.get("/ticket/:key", async (req, res) => {
   const issueKey = req.params.key;
 
   try {
-    const response = await axios.get(
-      `${JIRA_API_BASE_URL}/issue/${issueKey}?expand=names,renderedFields`,
-      {
-        headers: getAuthHeaders(),
-      }
-    );
-
-    res.status(200).json({
-      issueKey,
-      fields: response.data.fields,
-      raw: response.data
-    });
+    const ticket = await jiraService.getTicket(issueKey);
+    res.status(200).json(ticket);
   } catch (error) {
     if (error.response) {
-      console.error("JIRA API error response:");
-      console.error("Status:", error.response.status);
-      console.error("Data:", error.response.data);
+      console.error("JIRA API error:", error.response.status, error.response.data);
     } else {
       console.error("Request error:", error.message);
     }
     res.status(500).json({ error: "Failed to fetch JIRA issue." });
+  }
+});
+
+// POST /ticket/:key/transition - move Jira ticket to new status
+app.post("/ticket/:key/transition", async (req, res) => {
+  const issueKey = req.params.key;
+  const { status } = req.body;
+
+  if (!status) {
+    return res.status(400).json({ error: "Missing 'status' in request body" });
+  }
+
+  try {
+    const normalizedStatus = normalizeStatus(status);
+    const transitions = await jiraService.getTicketTransitions(issueKey);
+    const matching = transitions.find(t =>
+      t.name.toLowerCase() === normalizedStatus.toLowerCase()
+    );
+
+    if (!matching) {
+      return res.status(400).json({
+        error: `Status '${status}' not found in available transitions`,
+        availableStatuses: transitions.map(t => t.name),
+      });
+    }
+
+    await jiraService.transitionTicket(issueKey, matching.id);
+
+    res.status(200).json({
+      issueKey,
+      transitionedTo: matching.name
+    });
+  } catch (error) {
+    if (error.response) {
+      console.error("JIRA API error:", error.response.status, error.response.data);
+    } else {
+      console.error("Request error:", error.message);
+    }
+    res.status(500).json({ error: "Failed to update ticket status." });
+  }
+});
+
+// GET /tickets - fetch tickets by team and status
+app.get("/tickets", async (req, res) => {
+  const { team, status } = req.query;
+
+  if (!team || !status) {
+    return res.status(400).json({ error: "Both 'team' and 'status' parameters are required" });
+  }
+
+  const jql = `project = STOCK AND status = "${normalizeStatus(status)}" AND Team = "${team}" ORDER BY updated DESC`;
+
+  try {
+    const issues = await jiraService.searchTickets(jql);
+
+    const tickets = await Promise.all(issues.map(async issue => {
+      let pullRequests = [];
+
+      try {
+        const comments = await jiraService.getTicketComments(issue.key);
+        pullRequests = extractPullRequestLinks(comments);
+      } catch (err) {
+        console.warn(`Could not fetch comments for ${issue.key}: ${err.message}`);
+      }
+
+      return {
+        key: issue.key,
+        summary: issue.fields.summary,
+        status: issue.fields.status.name,
+        assignee: issue.fields.assignee?.displayName || "Unassigned",
+        pullRequests
+      };
+    }));
+
+    res.json({ count: tickets.length, tickets });
+  } catch (error) {
+    console.error("Error fetching tickets:", error.message);
+    res.status(500).json({ error: "Failed to fetch Jira tickets" });
   }
 });
 
