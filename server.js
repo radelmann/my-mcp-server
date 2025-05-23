@@ -34,6 +34,27 @@ app.get("/ticket/:key", async (req, res) => {
 
   try {
     const ticket = await jiraService.getTicket(issueKey);
+    // Extract PR links from comments
+    const comments = ticket.raw.fields.comment.comments || [];
+    const pullRequests = extractPullRequestLinks(comments);
+    const prDetails = pullRequests.map(prUrl => {
+      const alias = generatePRAlias(prUrl);
+      let prNumber = alias?.prNumber || 'PR';
+      let repoName = alias?.repo || 'repo';
+      repoName = repoName.replace('AdobeStock/', '');
+      let linkText = `${prNumber} - ${repoName}`;
+      return {
+        url: prUrl,
+        alias: alias?.alias || 'No alias available',
+        executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``,
+        hyperlink: `[${linkText}](${prUrl})`
+      };
+    });
+    // Add formattedOutput to the response
+    ticket.formattedOutput = `📋 ${ticket.issueKey}: ${ticket.fields.summary}
+   👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
+   🔄 Status: ${ticket.fields.status.name}
+   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`;
     res.status(200).json(ticket);
   } catch (error) {
     if (error.response) {
@@ -109,10 +130,15 @@ app.get("/tickets", async (req, res) => {
 
       const prDetails = pullRequests.map(prUrl => {
         const alias = generatePRAlias(prUrl);
+        let prNumber = alias?.prNumber || 'PR';
+        let repoName = alias?.repo || 'repo';
+        repoName = repoName.replace('AdobeStock/', '');
+        let linkText = `${prNumber} - ${repoName}`;
         return {
           url: prUrl,
           alias: alias?.alias || 'No alias available',
-          executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``
+          executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``,
+          hyperlink: `[${linkText}](${prUrl})`
         };
       });
 
@@ -125,12 +151,7 @@ app.get("/tickets", async (req, res) => {
         formattedOutput: `📋 ${issue.key}: ${issue.fields.summary}
    👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
    🔄 Status: ${issue.fields.status.name}
-   🔗 Pull Requests:
-${prDetails.map(pr => `      - ${pr.url}
-         💻 Review PR:
-         \`\`\`bash
-         ${pr.alias}
-         \`\`\``).join('\n')}`
+   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`
       };
     }));
 
