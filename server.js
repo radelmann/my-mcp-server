@@ -7,11 +7,16 @@ console.log("Starting MCP server...");
 const app = express();
 app.use(express.json());
 
+// Health check endpoint (no auth required)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Import middleware and services
 const authMiddleware = require("./middleware/auth");
 const JiraService = require("./services/jiraService");
 const { normalizeStatus } = require("./utils/statusUtils");
-const { extractPullRequestLinks } = require("./utils/prUtils");
+const { extractPullRequestLinks, generatePRAlias } = require("./utils/prUtils");
 
 // Initialize JIRA service
 const jiraService = new JiraService(
@@ -102,16 +107,40 @@ app.get("/tickets", async (req, res) => {
         console.warn(`Could not fetch comments for ${issue.key}: ${err.message}`);
       }
 
+      const prDetails = pullRequests.map(prUrl => {
+        const alias = generatePRAlias(prUrl);
+        return {
+          url: prUrl,
+          alias: alias?.alias || 'No alias available',
+          executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``
+        };
+      });
+
       return {
         key: issue.key,
         summary: issue.fields.summary,
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName || "Unassigned",
-        pullRequests
+        pullRequests: prDetails,
+        formattedOutput: `📋 ${issue.key}: ${issue.fields.summary}
+   👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
+   🔄 Status: ${issue.fields.status.name}
+   🔗 Pull Requests:
+${prDetails.map(pr => `      - ${pr.url}
+         💻 Review PR:
+         \`\`\`bash
+         ${pr.alias}
+         \`\`\``).join('\n')}`
       };
     }));
 
-    res.json({ count: tickets.length, tickets });
+    const formattedResponse = {
+      count: tickets.length,
+      tickets,
+      formattedSummary: `Found ${tickets.length} tickets in ${status} for ${team}:\n\n${tickets.map(t => t.formattedOutput).join('\n\n')}`
+    };
+
+    res.json(formattedResponse);
   } catch (error) {
     console.error("Error fetching tickets:", error.message);
     res.status(500).json({ error: "Failed to fetch Jira tickets" });
