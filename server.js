@@ -51,7 +51,7 @@ app.get("/ticket/:key", async (req, res) => {
       };
     });
     // Add formattedOutput to the response
-    ticket.formattedOutput = `📋 ${ticket.issueKey}: ${ticket.fields.summary}
+    ticket.formattedOutput = `📋 [${ticket.issueKey}](https://jira.corp.adobe.com/browse/${ticket.issueKey}): ${ticket.fields.summary}
    👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
    🔄 Status: ${ticket.fields.status.name}
    🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`;
@@ -148,7 +148,7 @@ app.get("/tickets", async (req, res) => {
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName || "Unassigned",
         pullRequests: prDetails,
-        formattedOutput: `📋 ${issue.key}: ${issue.fields.summary}
+        formattedOutput: `📋 [${issue.key}](https://jira.corp.adobe.com/browse/${issue.key}): ${issue.fields.summary}
    👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
    🔄 Status: ${issue.fields.status.name}
    🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`
