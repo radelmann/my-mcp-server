@@ -46,7 +46,7 @@ app.get("/ticket/:key", async (req, res) => {
       return {
         url: prUrl,
         alias: alias?.alias || 'No alias available',
-        executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``,
+        executableCommand: alias?.alias || 'No command available',
         hyperlink: `[${linkText}](${prUrl})`
       };
     });
@@ -54,7 +54,7 @@ app.get("/ticket/:key", async (req, res) => {
     ticket.formattedOutput = `📋 [${ticket.issueKey}](https://jira.corp.adobe.com/browse/${ticket.issueKey}): ${ticket.fields.summary}
    👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
    🔄 Status: ${ticket.fields.status.name}
-   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`;
+   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \`\`\`bash\n${pr.executableCommand}\n\`\`\``).join('\n')}`;
     res.status(200).json(ticket);
   } catch (error) {
     if (error.response) {
@@ -137,7 +137,7 @@ app.get("/tickets", async (req, res) => {
         return {
           url: prUrl,
           alias: alias?.alias || 'No alias available',
-          executableCommand: `\`\`\`bash\n${alias?.alias}\n\`\`\``,
+          executableCommand: alias?.alias || 'No command available',
           hyperlink: `[${linkText}](${prUrl})`
         };
       });
@@ -151,7 +151,7 @@ app.get("/tickets", async (req, res) => {
         formattedOutput: `📋 [${issue.key}](https://jira.corp.adobe.com/browse/${issue.key}): ${issue.fields.summary}
    👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
    🔄 Status: ${issue.fields.status.name}
-   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         ${pr.executableCommand}`).join('\n')}`
+   🔗 Pull Requests:${prDetails.length ? '\n' + prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \`\`\`bash\n${pr.executableCommand}\n\`\`\``).join('\n') : '\n      No pull requests yet'}`
       };
     }));
 
