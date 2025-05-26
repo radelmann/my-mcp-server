@@ -1,48 +1,41 @@
 // File: server.js
-const express = require("express");
-require("dotenv").config();
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+import dotenv from "dotenv";
+dotenv.config();
 
-console.log("Starting MCP server...");
+import JiraService from "./services/jiraService.js";
+import { normalizeStatus } from "./utils/statusUtils.js";
+import { extractPullRequestLinks, generatePRAlias } from "./utils/prUtils.js";
 
-const app = express();
-app.use(express.json());
+console.log("Starting MCP Jira SDK server...");
 
-// Health check endpoint (no auth required)
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Import middleware and services
-const authMiddleware = require("./middleware/auth");
-const JiraService = require("./services/jiraService");
-const { normalizeStatus } = require("./utils/statusUtils");
-const { extractPullRequestLinks, generatePRAlias } = require("./utils/prUtils");
-
-// Initialize JIRA service
 const jiraService = new JiraService(
   process.env.JIRA_API_BASE_URL,
   process.env.JIRA_EMAIL,
   process.env.JIRA_API_TOKEN
 );
 
-// Apply auth middleware
-app.use(authMiddleware);
+const server = new McpServer({
+  name: "Jira MCP Server",
+  version: "1.0.0"
+});
 
-// GET /ticket/:key - fetch JIRA ticket info
-app.get("/ticket/:key", async (req, res) => {
-  const issueKey = req.params.key;
-
-  try {
-    const ticket = await jiraService.getTicket(issueKey);
-    // Extract PR links from comments
+// Tool: Get Jira Ticket by Key
+server.tool(
+  "get_ticket_by_key",
+  { key: z.string().describe("Jira ticket key (e.g. STK-1234)") },
+  async ({ key }) => {
+    const ticket = await jiraService.getTicket(key);
     const comments = ticket.raw.fields.comment.comments || [];
     const pullRequests = extractPullRequestLinks(comments);
+
     const prDetails = pullRequests.map(prUrl => {
       const alias = generatePRAlias(prUrl);
       let prNumber = alias?.prNumber || 'PR';
-      let repoName = alias?.repo || 'repo';
-      repoName = repoName.replace('AdobeStock/', '');
-      let linkText = `${prNumber} - ${repoName}`;
+      let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
+      const linkText = `${prNumber} - ${repoName}`;
       return {
         url: prUrl,
         alias: alias?.alias || 'No alias available',
@@ -50,77 +43,57 @@ app.get("/ticket/:key", async (req, res) => {
         hyperlink: `[${linkText}](${prUrl})`
       };
     });
-    // Add formattedOutput to the response
-    ticket.formattedOutput = `📋 [${ticket.issueKey}](https://jira.corp.adobe.com/browse/${ticket.issueKey}): ${ticket.fields.summary}
-   👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
-   🔄 Status: ${ticket.fields.status.name}
-   🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \`\`\`bash\n${pr.executableCommand}\n\`\`\``).join('\n')}`;
-    res.status(200).json(ticket);
-  } catch (error) {
-    if (error.response) {
-      console.error("JIRA API error:", error.response.status, error.response.data);
-    } else {
-      console.error("Request error:", error.message);
-    }
-    res.status(500).json({ error: "Failed to fetch JIRA issue." });
+
+    const formattedOutput = `📋 [${ticket.issueKey}](https://jira.corp.adobe.com/browse/${ticket.issueKey}): ${ticket.fields.summary}
+👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
+🔄 Status: ${ticket.fields.status.name}
+🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \u0060\u0060\u0060bash\n${pr.executableCommand}\n\u0060\u0060\u0060`).join('\n')}`;
+
+    return {
+      content: [
+        { type: "text", text: formattedOutput },
+        { type: "text", text: JSON.stringify(ticket, null, 2) }
+      ]
+    };
   }
-});
+);
 
-// POST /ticket/:key/transition - move Jira ticket to new status
-app.post("/ticket/:key/transition", async (req, res) => {
-  const issueKey = req.params.key;
-  const { status } = req.body;
-
-  if (!status) {
-    return res.status(400).json({ error: "Missing 'status' in request body" });
-  }
-
-  try {
+// Tool: Transition Jira Ticket
+server.tool(
+  "transition_ticket",
+  {
+    key: z.string().describe("Jira ticket key"),
+    status: z.string().describe("Target status")
+  },
+  async ({ key, status }) => {
     const normalizedStatus = normalizeStatus(status);
-    const transitions = await jiraService.getTicketTransitions(issueKey);
-    const matching = transitions.find(t =>
-      t.name.toLowerCase() === normalizedStatus.toLowerCase()
-    );
+    const transitions = await jiraService.getTicketTransitions(key);
+    const match = transitions.find(t => t.name.toLowerCase() === normalizedStatus.toLowerCase());
 
-    if (!matching) {
-      return res.status(400).json({
-        error: `Status '${status}' not found in available transitions`,
-        availableStatuses: transitions.map(t => t.name),
-      });
+    if (!match) {
+      throw new Error(`Status '${status}' not valid. Options: ${transitions.map(t => t.name).join(", ")}`);
     }
 
-    await jiraService.transitionTicket(issueKey, matching.id);
-
-    res.status(200).json({
-      issueKey,
-      transitionedTo: matching.name
-    });
-  } catch (error) {
-    if (error.response) {
-      console.error("JIRA API error:", error.response.status, error.response.data);
-    } else {
-      console.error("Request error:", error.message);
-    }
-    res.status(500).json({ error: "Failed to update ticket status." });
+    await jiraService.transitionTicket(key, match.id);
+    return {
+      content: [{ type: "text", text: `✅ Ticket ${key} transitioned to ${match.name}` }]
+    };
   }
-});
+);
 
-// GET /tickets - fetch tickets by team and status
-app.get("/tickets", async (req, res) => {
-  const { team, status } = req.query;
-
-  if (!team || !status) {
-    return res.status(400).json({ error: "Both 'team' and 'status' parameters are required" });
-  }
-
-  const jql = `project = STOCK AND status = "${normalizeStatus(status)}" AND Team = "${team}" ORDER BY updated DESC`;
-
-  try {
+// Tool: List Jira Tickets by Team and Status
+server.tool(
+  "list_tickets_by_team_and_status",
+  {
+    team: z.string().describe("Team name (e.g. EComm Demand)"),
+    status: z.string().describe("Ticket status (e.g. Code Review)")
+  },
+  async ({ team, status }) => {
+    const jql = `project = STOCK AND status = "${normalizeStatus(status)}" AND Team = "${team}" ORDER BY updated DESC`;
     const issues = await jiraService.searchTickets(jql);
 
     const tickets = await Promise.all(issues.map(async issue => {
       let pullRequests = [];
-
       try {
         const comments = await jiraService.getTicketComments(issue.key);
         pullRequests = extractPullRequestLinks(comments);
@@ -131,9 +104,8 @@ app.get("/tickets", async (req, res) => {
       const prDetails = pullRequests.map(prUrl => {
         const alias = generatePRAlias(prUrl);
         let prNumber = alias?.prNumber || 'PR';
-        let repoName = alias?.repo || 'repo';
-        repoName = repoName.replace('AdobeStock/', '');
-        let linkText = `${prNumber} - ${repoName}`;
+        let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
+        const linkText = `${prNumber} - ${repoName}`;
         return {
           url: prUrl,
           alias: alias?.alias || 'No alias available',
@@ -149,26 +121,20 @@ app.get("/tickets", async (req, res) => {
         assignee: issue.fields.assignee?.displayName || "Unassigned",
         pullRequests: prDetails,
         formattedOutput: `📋 [${issue.key}](https://jira.corp.adobe.com/browse/${issue.key}): ${issue.fields.summary}
-   👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
-   🔄 Status: ${issue.fields.status.name}
-   🔗 Pull Requests:${prDetails.length ? '\n' + prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \`\`\`bash\n${pr.executableCommand}\n\`\`\``).join('\n') : '\n      No pull requests yet'}`
+👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
+🔄 Status: ${issue.fields.status.name}
+🔗 Pull Requests:${prDetails.length ? '\n' + prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \u0060\u0060\u0060bash\n${pr.executableCommand}\n\u0060\u0060\u0060`).join('\n') : '\n      No pull requests yet'}`
       };
     }));
 
-    const formattedResponse = {
-      count: tickets.length,
-      tickets,
-      formattedSummary: `Found ${tickets.length} tickets in ${status} for ${team}:\n\n${tickets.map(t => t.formattedOutput).join('\n\n')}`
+    return {
+      content: [
+        { type: "text", text: `Found ${tickets.length} tickets in ${status} for ${team}:\n\n${tickets.map(t => t.formattedOutput).join('\n\n')}` },
+        { type: "text", text: JSON.stringify({ count: tickets.length, tickets }, null, 2) }
+      ]
     };
-
-    res.json(formattedResponse);
-  } catch (error) {
-    console.error("Error fetching tickets:", error.message);
-    res.status(500).json({ error: "Failed to fetch Jira tickets" });
   }
-});
+);
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`MCP Server running on port ${PORT}`);
-});
+const transport = new StdioServerTransport();
+await server.connect(transport);
