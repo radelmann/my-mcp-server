@@ -154,5 +154,34 @@ server.tool(
   }
 );
 
+// Tool: List Jira Tickets by Sprint and Team
+server.tool(
+  "list_tickets_by_sprint_and_team",
+  {
+    sprint: z.string().describe("Sprint name (e.g. STK Sprint 253)"),
+    team: z.string().describe("Team name (e.g. EComm LTV)")
+  },
+  async ({ sprint, team }) => {
+    const issues = await jiraService.searchTicketsBySprintAndTeam(sprint, team);
+
+    const tickets = await Promise.all(issues.map(async issue => {
+      let comments = [];
+      try {
+        comments = await jiraService.getTicketComments(issue.key);
+      } catch (err) {
+        console.warn(`Could not fetch comments for ${issue.key}: ${err.message}`);
+      }
+
+      return formatTicket(issue, comments);
+    }));
+
+    return {
+      content: [
+        { type: "text", text: JSON.stringify({ count: tickets.length, tickets }, null, 2) }
+      ]
+    };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

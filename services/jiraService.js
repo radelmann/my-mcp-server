@@ -107,6 +107,11 @@ class JiraService {
       };
     }
   }
+
+  async searchTicketsBySprintAndTeam(sprintName, teamName, fields = ["key", "summary", "status", "assignee"]) {
+    const jql = `sprint = "${sprintName}" AND Team = "${teamName}" ORDER BY updated DESC`;
+    return this.searchTickets(jql, fields);
+  }
 }
 
 module.exports = JiraService;
