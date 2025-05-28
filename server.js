@@ -22,6 +22,40 @@ const server = new McpServer({
   version: "1.0.0"
 });
 
+// Shared function to format pull request details
+const formatPullRequests = (prUrls) => {
+  return prUrls.map(prUrl => {
+    const alias = generatePRAlias(prUrl);
+    let prNumber = alias?.prNumber || 'PR';
+    let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
+    const linkText = `${prNumber} - ${repoName}`;
+    return {
+      link: `[${linkText}](${prUrl})`,
+      executableCommand: alias?.alias || 'No command available',
+    };
+  });
+};
+
+// Shared function to format a ticket
+const formatTicket = (ticket, comments = [], includeDescription = false) => {
+  const pullRequests = extractPullRequestLinks(comments);
+  const prDetails = formatPullRequests(pullRequests);
+
+  const formattedTicket = {
+    key: ticket.issueKey || ticket.key,
+    summary: ticket.fields.summary,
+    status: ticket.fields.status.name,
+    assignee: ticket.fields.assignee?.displayName || "Unassigned",
+    pullRequests: prDetails,
+  };
+
+  if (includeDescription) {
+    formattedTicket.description = ticket.fields.description;
+  }
+
+  return formattedTicket;
+};
+
 // Tool: Get Jira Ticket by Key
 server.tool(
   "get_ticket_by_key",
@@ -29,30 +63,11 @@ server.tool(
   async ({ key }) => {
     const ticket = await jiraService.getTicket(key);
     const comments = ticket.raw.fields.comment.comments || [];
-    const pullRequests = extractPullRequestLinks(comments);
-
-    const prDetails = pullRequests.map(prUrl => {
-      const alias = generatePRAlias(prUrl);
-      let prNumber = alias?.prNumber || 'PR';
-      let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
-      const linkText = `${prNumber} - ${repoName}`;
-      return {
-        url: prUrl,
-        alias: alias?.alias || 'No alias available',
-        executableCommand: alias?.alias || 'No command available',
-        hyperlink: `[${linkText}](${prUrl})`
-      };
-    });
-
-    const formattedOutput = `📋 [${ticket.issueKey}](https://jira.corp.adobe.com/browse/${ticket.issueKey}): ${ticket.fields.summary}
-👤 Assignee: ${ticket.fields.assignee?.displayName || "Unassigned"}
-🔄 Status: ${ticket.fields.status.name}
-🔗 Pull Requests:\n${prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \u0060\u0060\u0060bash\n${pr.executableCommand}\n\u0060\u0060\u0060`).join('\n')}`;
+    const formattedTicket = formatTicket(ticket, comments, true);
 
     return {
       content: [
-        { type: "text", text: formattedOutput },
-        { type: "text", text: JSON.stringify(ticket, null, 2) }
+        { type: "text", text: JSON.stringify({ count: 1, tickets: [formattedTicket] }, null, 2) }
       ]
     };
   }
@@ -93,34 +108,15 @@ server.tool(
     const issues = await jiraService.searchTickets(jql);
 
     const tickets = await Promise.all(issues.map(async issue => {
-      let pullRequests = [];
+      let comments = [];
       try {
-        const comments = await jiraService.getTicketComments(issue.key);
-        pullRequests = extractPullRequestLinks(comments);
+        comments = await jiraService.getTicketComments(issue.key);
       } catch (err) {
         console.warn(`Could not fetch comments for ${issue.key}: ${err.message}`);
       }
 
-      const prDetails = pullRequests.map(prUrl => {
-        const alias = generatePRAlias(prUrl);
-        let prNumber = alias?.prNumber || 'PR';
-        let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
-        const linkText = `${prNumber} - ${repoName}`;
-        return {
-          link: `[${linkText}](${prUrl})`,
-          executableCommand: alias?.alias || 'No command available',
-        };
-      });
-
-      return {
-        key: issue.key,
-        summary: issue.fields.summary,
-        status: issue.fields.status.name,
-        assignee: issue.fields.assignee?.displayName || "Unassigned",
-        pullRequests: prDetails,
-      };
+      return formatTicket(issue, comments);
     }));
-
 
     return {
       content: [
