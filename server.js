@@ -126,5 +126,33 @@ server.tool(
   }
 );
 
+// Tool: Add Code Reviewer to Tickets
+server.tool(
+  "add_code_reviewer",
+  {
+    keys: z.array(z.string()).describe("Array of Jira ticket keys"),
+    username: z.string().describe("Username to add as reviewer (e.g. adelmann)")
+  },
+  async ({ keys, username }) => {
+    const results = await Promise.all(
+      keys.map(async (key) => {
+        const result = await jiraService.addCodeReviewer(key, username);
+        return { key, ...result };
+      })
+    );
+
+    const formatted = results.map(result => {
+      const icon = result.status === 'success' ? '✅' : result.status === 'skipped' ? '⏭️' : '❌';
+      return `${icon} [${result.key}](mdc:https:/jira.corp.adobe.com/browse/${result.key}): ${result.message}`;
+    }).join('\n');
+
+    return {
+      content: [
+        { type: "text", text: formatted }
+      ]
+    };
+  }
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

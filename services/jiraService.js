@@ -76,6 +76,37 @@ class JiraService {
     );
     return response.data.comments || [];
   }
+
+  async addCodeReviewer(key, username) {
+    try {
+      // First, get current reviewers to avoid duplicates
+      const ticket = await this.getTicket(key);
+      const currentReviewers = ticket.raw.fields.customfield_19601 || [];
+
+      // Check if user is already a reviewer
+      if (currentReviewers.some(reviewer => reviewer.name === username)) {
+        return { status: 'skipped', message: 'Already a reviewer' };
+      }
+
+      // Add the new reviewer
+      await axios.put(
+        `${this.baseUrl}/issue/${key}`,
+        {
+          fields: {
+            customfield_19601: [...currentReviewers, { name: username }]
+          }
+        },
+        { headers: this.authHeaders }
+      );
+
+      return { status: 'success', message: 'Added as reviewer' };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: error.response?.data?.errorMessages?.[0] || error.message
+      };
+    }
+  }
 }
 
 module.exports = JiraService;
