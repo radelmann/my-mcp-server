@@ -107,10 +107,8 @@ server.tool(
         let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
         const linkText = `${prNumber} - ${repoName}`;
         return {
-          url: prUrl,
-          alias: alias?.alias || 'No alias available',
+          link: `[${linkText}](${prUrl})`,
           executableCommand: alias?.alias || 'No command available',
-          hyperlink: `[${linkText}](${prUrl})`
         };
       });
 
@@ -120,16 +118,12 @@ server.tool(
         status: issue.fields.status.name,
         assignee: issue.fields.assignee?.displayName || "Unassigned",
         pullRequests: prDetails,
-        formattedOutput: `📋 [${issue.key}](https://jira.corp.adobe.com/browse/${issue.key}): ${issue.fields.summary}
-👤 Assignee: ${issue.fields.assignee?.displayName || "Unassigned"}
-🔄 Status: ${issue.fields.status.name}
-🔗 Pull Requests:${prDetails.length ? '\n' + prDetails.map(pr => `      - ${pr.hyperlink}\n         💻 Review PR:\n         \u0060\u0060\u0060bash\n${pr.executableCommand}\n\u0060\u0060\u0060`).join('\n') : '\n      No pull requests yet'}`
       };
     }));
 
+
     return {
       content: [
-        { type: "text", text: `Found ${tickets.length} tickets in ${status} for ${team}:\n\n${tickets.map(t => t.formattedOutput).join('\n\n')}` },
         { type: "text", text: JSON.stringify({ count: tickets.length, tickets }, null, 2) }
       ]
     };
