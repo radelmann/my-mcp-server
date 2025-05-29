@@ -8,6 +8,7 @@ dotenv.config();
 import JiraService from "./services/jiraService.js";
 import { normalizeStatus } from "./utils/statusUtils.js";
 import { extractPullRequestLinks, generatePRAlias } from "./utils/prUtils.js";
+import { formatPullRequests, formatTicket } from "./utils/formatUtils.js";
 
 console.log("Starting MCP Jira SDK server...");
 
@@ -21,40 +22,6 @@ const server = new McpServer({
   name: "Jira MCP Server",
   version: "1.0.0"
 });
-
-// Shared function to format pull request details
-const formatPullRequests = (prUrls) => {
-  return prUrls.map(prUrl => {
-    const alias = generatePRAlias(prUrl);
-    let prNumber = alias?.prNumber || 'PR';
-    let repoName = (alias?.repo || 'repo').replace('AdobeStock/', '');
-    const linkText = `${prNumber} - ${repoName}`;
-    return {
-      link: `[${linkText}](${prUrl})`,
-      executableCommand: alias?.alias || 'No command available',
-    };
-  });
-};
-
-// Shared function to format a ticket
-const formatTicket = (ticket, comments = [], includeDescription = false) => {
-  const pullRequests = extractPullRequestLinks(comments);
-  const prDetails = formatPullRequests(pullRequests);
-
-  const formattedTicket = {
-    key: ticket.issueKey || ticket.key,
-    summary: ticket.fields.summary,
-    status: ticket.fields.status.name,
-    assignee: ticket.fields.assignee?.displayName || "Unassigned",
-    pullRequests: prDetails,
-  };
-
-  if (includeDescription) {
-    formattedTicket.description = ticket.fields.description;
-  }
-
-  return formattedTicket;
-};
 
 // Tool: Get Jira Ticket by Key
 server.tool(
