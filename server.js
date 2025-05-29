@@ -20,6 +20,7 @@ const jiraService = new JiraService(
 );
 
 const confluenceService = new ConfluenceService(
+  process.env.CONFLUENCE_BASE_URL,
   process.env.CONFLUENCE_USERNAME,
   process.env.CONFLUENCE_API_TOKEN
 );

@@ -2,14 +2,14 @@ import { ConfluenceClient } from 'confluence.js';
 import TurndownService from 'turndown';
 
 export default class ConfluenceService {
-  constructor(username, apiToken) {
-    this.host = 'wiki.corp.adobe.com';
+  constructor(host, username, apiToken) {
+    this.host = host;
     this.username = username;
     this.apiToken = apiToken;
 
     // Initialize Confluence client
     this.client = new ConfluenceClient({
-      host: `https://${this.host}`,
+      host,
       apiPrefix: '/rest',
       authentication: {
         personalAccessToken: this.apiToken
