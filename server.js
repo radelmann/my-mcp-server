@@ -5,12 +5,13 @@ import { z } from "zod";
 import dotenv from "dotenv";
 dotenv.config();
 
-import JiraService from "./services/jiraService.js";
+import { JiraService } from "./services/jiraService.js";
+import ConfluenceService from "./services/confluenceService.js";
 import { normalizeStatus } from "./utils/statusUtils.js";
 import { extractPullRequestLinks, generatePRAlias } from "./utils/prUtils.js";
-import { formatPullRequests, formatTicket } from "./utils/formatUtils.js";
+import { formatTicket } from "./utils/formatUtils.js";
 
-console.log("Starting MCP Jira SDK server...");
+console.log("Starting MCP Server with Jira and Confluence support...");
 
 const jiraService = new JiraService(
   process.env.JIRA_API_BASE_URL,
@@ -18,8 +19,13 @@ const jiraService = new JiraService(
   process.env.JIRA_API_TOKEN
 );
 
+const confluenceService = new ConfluenceService(
+  process.env.CONFLUENCE_USERNAME,
+  process.env.CONFLUENCE_API_TOKEN
+);
+
 const server = new McpServer({
-  name: "Jira MCP Server",
+  name: "Adobe Tools MCP Server",
   version: "1.0.0"
 });
 
@@ -147,6 +153,79 @@ server.tool(
         { type: "text", text: JSON.stringify({ count: tickets.length, tickets }, null, 2) }
       ]
     };
+  }
+);
+
+// Tool: Test Confluence Connection
+server.tool(
+  "test_confluence_connection",
+  {},
+  async () => {
+    try {
+      const result = await confluenceService.testConnection();
+
+      if (result.success) {
+        return {
+          content: [
+            { type: "text", text: "✅ " + result.message + "\n" },
+            { type: "text", text: `Server: ${result.serverInfo.url}\n` },
+            { type: "text", text: `Username: ${result.serverInfo.username}\n` },
+            { type: "text", text: `Available spaces: ${result.spaces}` }
+          ]
+        };
+      } else {
+        return {
+          content: [
+            { type: "text", text: "❌ " + result.message + "\n" },
+            { type: "text", text: `Server: ${result.serverInfo.url}\n` },
+            { type: "text", text: `Username: ${result.serverInfo.username}\n` },
+            { type: "text", text: `Error details: ${result.error}` }
+          ]
+        };
+      }
+    } catch (error) {
+      return {
+        content: [
+          { type: "text", text: `❌ Unexpected error: ${error.message}` }
+        ]
+      };
+    }
+  }
+);
+
+// Tool: Get Confluence Page
+server.tool(
+  "get_confluence_page",
+  {
+    pageId: z.string().describe("Confluence page ID"),
+    format: z.enum(['markdown', 'html', 'both']).default('markdown')
+      .describe("Output format (markdown, html, or both)")
+  },
+  async ({ pageId, format }) => {
+    try {
+      const page = await confluenceService.getPage(pageId);
+      const content = format === 'markdown' ? page.markdownContent :
+                     format === 'html' ? page.htmlContent :
+                     { markdown: page.markdownContent, html: page.htmlContent };
+
+      return {
+        content: [
+          { type: "text", text: JSON.stringify({
+            id: page.id,
+            title: page.title,
+            version: page.version,
+            space: page.space,
+            content: content
+          }, null, 2) }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          { type: "text", text: `Error fetching page: ${error.message}` }
+        ]
+      };
+    }
   }
 );
 

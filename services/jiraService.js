@@ -1,7 +1,7 @@
-const axios = require("axios");
-const { extractPullRequestLinks } = require("../utils/prUtils");
+import axios from "axios";
+import { extractPullRequestLinks } from "../utils/prUtils.js";
 
-class JiraService {
+export class JiraService {
   constructor(baseUrl, email, apiToken) {
     this.baseUrl = baseUrl;
     this.authHeaders = this.getAuthHeaders(email, apiToken);
@@ -113,5 +113,3 @@ class JiraService {
     return this.searchTickets(jql, fields);
   }
 }
-
-module.exports = JiraService;

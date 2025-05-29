@@ -1,4 +1,4 @@
-function extractPullRequestLinks(comments) {
+export function extractPullRequestLinks(comments) {
   const prRegex = /(https?:\/\/[^\s]*\/pull\/\d+)/gi;
   const links = [];
 
@@ -23,7 +23,7 @@ function getRepoPath(repo) {
   return repoPaths[repo] || `~/dev/${repo.split('/')[1]}`;
 }
 
-function generatePRAlias(prUrl) {
+export function generatePRAlias(prUrl) {
   const match = prUrl.match(/git\.corp\.adobe\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)/);
   if (!match) {
     return null;
@@ -37,8 +37,3 @@ function generatePRAlias(prUrl) {
     alias: `cd ${repoPath} && git.code.review ${prNumber}`
   };
 }
-
-module.exports = {
-  extractPullRequestLinks,
-  generatePRAlias
-};
