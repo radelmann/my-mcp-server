@@ -8,7 +8,6 @@ dotenv.config();
 import { JiraService } from "./services/jiraService.js";
 import ConfluenceService from "./services/confluenceService.js";
 import { normalizeStatus } from "./utils/statusUtils.js";
-import { extractPullRequestLinks, generatePRAlias } from "./utils/prUtils.js";
 import { formatTicket } from "./utils/formatUtils.js";
 
 console.log("Starting MCP Server with Jira and Confluence support...");
