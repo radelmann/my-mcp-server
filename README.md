@@ -36,6 +36,10 @@ Fetches a Jira ticket by its key (e.g., STK-1234).
   key: string  // Jira ticket key
 }
 ```
+Example prompts:
+- "Show me the details for ticket STK-1234"
+- "What's the status of STOCK-5678?"
+- "Get information about the ticket STK-9012"
 
 #### `transition_ticket`
 Transitions a Jira ticket to a new status.
@@ -45,6 +49,10 @@ Transitions a Jira ticket to a new status.
   status: string  // Target status
 }
 ```
+Example prompts:
+- "Move ticket STK-1234 to Code Review"
+- "Transition STOCK-5678 to Done"
+- "Update the status of STK-9012 to In Progress"
 
 #### `list_tickets_by_team_and_status`
 Lists tickets for a specific team and status.
@@ -54,6 +62,10 @@ Lists tickets for a specific team and status.
   status: string  // Ticket status (e.g., "Code Review")
 }
 ```
+Example prompts:
+- "Show me all Code Review tickets for EComm Demand team"
+- "List In Progress tickets for EComm LTV"
+- "What tickets are in QA for the Stock team?"
 
 #### `add_code_reviewer`
 Adds a code reviewer to one or more tickets.
@@ -63,6 +75,10 @@ Adds a code reviewer to one or more tickets.
   username: string // Username to add as reviewer
 }
 ```
+Example prompts:
+- "Add adelmann as reviewer to STK-1234"
+- "Set jsmith as code reviewer for STOCK-5678 and STOCK-5679"
+- "Add code reviewer mmiller to these tickets: STK-1234, STK-1235"
 
 #### `list_tickets_by_sprint_and_team`
 Lists tickets for a specific sprint and team.
@@ -72,11 +88,20 @@ Lists tickets for a specific sprint and team.
   team: string    // Team name (e.g., "EComm LTV")
 }
 ```
+Example prompts:
+- "Show tickets for EComm LTV in STK Sprint 253"
+- "List all EComm Demand tickets in the current sprint"
+- "What's in Sprint 254 for the Stock team?"
 
 ### Confluence Tools
 
 #### `test_confluence_connection`
 Tests the connection to Confluence.
+
+Example prompts:
+- "Test the Confluence connection"
+- "Check if Confluence is working"
+- "Verify Confluence credentials"
 
 #### `get_confluence_page`
 Retrieves a Confluence page by its ID.
@@ -86,6 +111,10 @@ Retrieves a Confluence page by its ID.
   format?: "markdown" | "html" | "both" // Output format (default: "markdown")
 }
 ```
+Example prompts:
+- "Show me Confluence page 3506530385"
+- "Get the content of wiki page 1234567890"
+- "Fetch Confluence page 9876543210 in HTML format"
 
 ### Diagram Tools
 
@@ -97,6 +126,21 @@ Generates a diagram using Mermaid syntax and saves it as an image.
   filename?: string // Optional filename for the diagram
 }
 ```
+Example prompts:
+- "Create a sequence diagram showing user authentication flow"
+- "Generate a class diagram for the Cart system"
+- "Make a flowchart showing the checkout process"
+- "Create a diagram from this code file"
+- "Analyze this class and create a diagram"
+
+Example Mermaid code:
+```mermaid
+sequenceDiagram
+    User->>+Server: Login Request
+    Server->>+Database: Validate Credentials
+    Database-->>-Server: Valid
+    Server-->>-User: Success
+```
 
 #### `add_diagram_to_confluence`
 Adds a Mermaid diagram to a Confluence page.
@@ -107,6 +151,10 @@ Adds a Mermaid diagram to a Confluence page.
   position?: string    // Where to add the diagram (top or bottom)
 }
 ```
+Example prompts:
+- "Add this diagram to Confluence page 3506530385"
+- "Insert the sequence diagram at the top of page 1234567890"
+- "Update wiki page 9876543210 with this architecture diagram"
 
 ## Project Structure
 
