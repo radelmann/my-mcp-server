@@ -2,14 +2,18 @@
   "mcpServers": {
     "my-mcp-server": {
       "command": "node",
-      "args": ["full path to server.js"], // must be full path not relative
+      "args": ["full path to server.js"], // Replace with absolute path to server.js
       "env": {
+        // Jira Configuration
         "JIRA_API_BASE_URL": "https://jira.corp.adobe.com/rest/api/2",
-        "JIRA_EMAIL": "", // ldap
-        "JIRA_API_TOKEN": "", // ldap pw
+        "JIRA_EMAIL": "",      // Your LDAP username
+        "JIRA_API_TOKEN": "",  // Your LDAP password
+
+        // Confluence Configuration
         "CONFLUENCE_BASE_URL": "https://wiki.corp.adobe.com",
-        "CONFLUENCE_USERNAME": "", // corp email
-        "CONFLUENCE_API_TOKEN": "" // confluence PAT
+        "CONFLUENCE_USERNAME": "", // Your Adobe email
+        "CONFLUENCE_API_TOKEN": "" // Your Confluence Personal Access Token
+                                 // Generate from: Confluence Settings > Personal Access Tokens
       }
     }
   }
