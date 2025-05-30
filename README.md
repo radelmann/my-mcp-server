@@ -1,5 +1,26 @@
 # MCP Server for Cursor Integration
 
+## Table of Contents
+- [Setup](#setup)
+- [Available Tools](#available-tools)
+  - [Jira Tools](#jira-tools)
+    - [get_ticket_by_key](#get_ticket_by_key)
+    - [transition_ticket](#transition_ticket)
+    - [list_tickets_by_team_and_status](#list_tickets_by_team_and_status)
+    - [add_code_reviewer](#add_code_reviewer)
+    - [list_tickets_by_sprint_and_team](#list_tickets_by_sprint_and_team)
+  - [Confluence Tools](#confluence-tools)
+    - [test_confluence_connection](#test_confluence_connection)
+    - [get_confluence_page](#get_confluence_page)
+  - [Diagram Tools](#diagram-tools)
+    - [generate_diagram](#generate_diagram)
+    - [add_diagram_to_confluence](#add_diagram_to_confluence)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+
 This MCP (Model Context Protocol) server provides integration with Jira, Confluence, and diagram generation capabilities for use with the Cursor IDE.
 
 ## Setup
