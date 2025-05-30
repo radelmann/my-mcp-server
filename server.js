@@ -7,10 +7,11 @@ dotenv.config();
 
 import { JiraService } from "./services/jiraService.js";
 import ConfluenceService from "./services/confluenceService.js";
+import DiagramService from "./services/diagramService.js";
 import { normalizeStatus } from "./utils/statusUtils.js";
 import { formatTicket } from "./utils/formatUtils.js";
 
-console.log("Starting MCP Server with Jira and Confluence support...");
+console.log("Starting MCP Server with Jira, Confluence, and Diagram support...");
 
 const jiraService = new JiraService(
   process.env.JIRA_API_BASE_URL,
@@ -23,6 +24,8 @@ const confluenceService = new ConfluenceService(
   process.env.CONFLUENCE_USERNAME,
   process.env.CONFLUENCE_API_TOKEN
 );
+
+const diagramService = new DiagramService();
 
 const server = new McpServer({
   name: "Adobe Tools MCP Server",
@@ -223,6 +226,36 @@ server.tool(
       return {
         content: [
           { type: "text", text: `Error fetching page: ${error.message}` }
+        ]
+      };
+    }
+  }
+);
+
+// Tool: Generate and Save Diagram
+server.tool(
+  "generate_diagram",
+  {
+    code: z.string().describe("Mermaid diagram code"),
+    filename: z.string().optional().describe("Optional filename for the diagram")
+  },
+  async ({ code, filename }) => {
+    try {
+      const filePath = await diagramService.saveDiagram(code, filename);
+      const confluenceHtml = diagramService.generateConfluenceHtml(code);
+
+      return {
+        content: [
+          { type: "text", text: "✅ Diagram generated successfully\n" },
+          { type: "text", text: `File saved at: ${filePath}\n` },
+          { type: "text", text: "Confluence HTML:\n" },
+          { type: "text", text: confluenceHtml }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          { type: "text", text: `❌ Error generating diagram: ${error.message}` }
         ]
       };
     }
