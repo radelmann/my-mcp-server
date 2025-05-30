@@ -1,5 +1,7 @@
 .env
 node_modules
 instructions.md
-.cursor
-diagrams
+.cursor/mcp.json
+diagrams/*
+!diagrams/.gitkeep
+.DS_Store

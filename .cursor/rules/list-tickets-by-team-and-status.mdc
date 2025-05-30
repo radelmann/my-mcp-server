@@ -1,0 +1,34 @@
+---
+description: list_tickets_by_team_and_status formatting rules
+globs:
+alwaysApply: false
+---
+# list_tickets_by_team_and_status MCP Tool Response Formatting
+
+## List Tickets Response
+When viewing tickets from list_tickets_by_team_and_status:
+
+1. JIRA tickets should be formatted as:
+   `[STK-1234](mdc:https:/jira.corp.adobe.com/browse/STK-1234) - Ticket Summary`
+
+2. Pull Request formatting:
+   ```
+   [PR# - repo](mdc:https:/git.corp.adobe.com/AdobeStock/repo-name/pull/123)
+   ```bash
+   cd ~/dev/repo-name && git.code.review 123
+   ```
+   ```
+
+3. Structure:
+   ```
+   1. [STK-1234](mdc:https:/jira.corp.adobe.com/browse/STK-1234) - Ticket Summary
+      - Assignee: Name
+      - PRs:
+        [123 - repo-name](mdc:https:/git.corp.adobe.com/AdobeStock/repo-name/pull/123)
+        ```bash
+        cd ~/dev/repo-name && git.code.review 123
+        ```
+   ```
+
+4. No Pull Requests:
+   If a ticket has no PRs, display: "No pull requests yet"

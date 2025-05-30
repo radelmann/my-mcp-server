@@ -1,0 +1,35 @@
+---
+description: When displaying a ticket from get_ticket_by_key, follow this format
+globs:
+alwaysApply: false
+---
+# get_ticket_by_key MCP Tool Response Formatting
+
+When displaying a ticket from get_ticket_by_key, follow this format:
+
+1. JIRA ticket should be formatted as:
+   ```
+   1. [STK-1234](mdc:https:/jira.corp.adobe.com/browse/STK-1234) - Ticket Summary
+      - Assignee: Name
+      - Status: Current Status
+
+      **Description:**
+      [Full description with sections and formatting preserved]
+
+      - PRs:
+        [PR# - repo-name](mdc:https:/git.corp.adobe.com/AdobeStock/repo-name/pull/123)
+        ```bash
+        cd ~/dev/repo-name && git.code.review 123
+        ```
+   ```
+
+2. If a ticket has no PRs, display:
+   ```
+   - PRs: No pull requests yet
+   ```
+
+3. Description sections should be formatted with:
+   - Section headers in plain text (no colors)
+   - Lists using standard markdown bullets (*)
+   - Original line breaks preserved
+   - Placed between Status and PRs sections
