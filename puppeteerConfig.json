@@ -1,0 +1,9 @@
+{
+  "deviceScaleFactor": 2,
+  "args": ["--no-sandbox", "--high-dpi-support=1"],
+  "defaultViewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 2
+  }
+}
