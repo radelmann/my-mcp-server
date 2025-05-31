@@ -67,7 +67,7 @@ export default class ConfluenceService {
         message: 'Successfully connected to Confluence',
         spaces: spaces.results.length,
         serverInfo: {
-          url: `https://${this.host}`,
+          url: this.host,
           username: this.username
         }
       };
@@ -86,7 +86,7 @@ export default class ConfluenceService {
         error: error.message,
         statusCode,
         serverInfo: {
-          url: `https://${this.host}`,
+          url: this.host,
           username: this.username
         }
       };
