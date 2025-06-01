@@ -57,8 +57,6 @@ export default class ConfluenceService {
    */
   async testConnection() {
     try {
-      console.log('Testing Confluence connection...');
-
       // Use a simple API call to verify connection
       const spaces = await this.client.space.getSpaces({ limit: 1 });
 
@@ -127,6 +125,75 @@ export default class ConfluenceService {
     } catch (error) {
       console.error('Error fetching page:', error);
       throw new Error(`Failed to fetch page: ${error.message}`);
+    }
+  }
+
+  /**
+   * Updates a Confluence page with new content
+   * @param {string} pageId - The Confluence page ID
+   * @param {string} content - The HTML content to update
+   * @param {Object} options - Additional options
+   * @param {boolean} [options.minorEdit=false] - Whether this is a minor edit
+   * @returns {Promise<Object>} The updated page data
+   */
+  async updatePage(pageId, content, options = {}) {
+    try {
+      // First get the current page to get its version and other metadata
+      const currentPage = await this.getPage(pageId);
+      const nextVersion = currentPage.version + 1;
+
+      const url = `${this.host}/rest/api/content/${pageId}`;
+
+      const payload = {
+        id: pageId,
+        type: "page",
+        title: currentPage.title,
+        space: {
+          key: currentPage.space.key
+        },
+        version: {
+          number: nextVersion,
+          minorEdit: options.minorEdit || false
+        },
+        body: {
+          storage: {
+            value: content,
+            representation: "storage"
+          }
+        }
+      };
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`API Error: ${errorData.message || response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        id: result.id,
+        title: result.title,
+        version: result.version.number,
+        space: {
+          key: result.space.key,
+          name: result.space.name
+        },
+        lastUpdated: result.version.when,
+        updatedBy: result.version.by
+      };
+    } catch (error) {
+      console.error('Error updating page:', error);
+      throw new Error(`Failed to update page: ${error.message}`);
     }
   }
 }

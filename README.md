@@ -12,6 +12,7 @@
   - [Confluence Tools](#confluence-tools)
     - [test_confluence_connection](#test_confluence_connection)
     - [get_confluence_page](#get_confluence_page)
+    - [update_confluence_page](#update_confluence_page)
   - [Diagram Tools](#diagram-tools)
     - [generate_diagram](#generate_diagram)
     - [add_diagram_to_confluence](#add_diagram_to_confluence)
@@ -136,6 +137,32 @@ Example prompts:
 - "Show me Confluence page 3506530385"
 - "Get the content of wiki page 1234567890"
 - "Fetch Confluence page 9876543210 in HTML format"
+
+#### `update_confluence_page`
+Updates a Confluence page with new content.
+```typescript
+{
+  pageId: string,    // Confluence page ID
+  content: string,   // HTML content to update the page with
+  minorEdit?: boolean // Whether this is a minor edit (default: false)
+}
+```
+Example prompts:
+- "Update Confluence page 3506530385 with new content"
+- "Edit wiki page 1234567890 with this HTML"
+- "Update the documentation on page 9876543210"
+
+Note: To include Mermaid diagrams in your Confluence page, wrap the Mermaid content in the HTML macro:
+```html
+<ac:structured-macro ac:name="html">
+<ac:plain-text-body><![CDATA[<div>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/+esm"></script>
+    <pre class="mermaid">
+        [Your Mermaid diagram code here]
+    </pre>
+</div>]]></ac:plain-text-body>
+</ac:structured-macro>
+```
 
 ### Diagram Tools
 

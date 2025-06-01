@@ -11,8 +11,6 @@ import DiagramService from "./services/diagramService.js";
 import { normalizeStatus } from "./utils/statusUtils.js";
 import { formatTicket } from "./utils/formatUtils.js";
 
-console.log("Starting MCP Server with Jira, Confluence, and Diagram support...");
-
 const jiraService = new JiraService(
   process.env.JIRA_API_BASE_URL,
   process.env.JIRA_EMAIL,
@@ -256,6 +254,41 @@ server.tool(
       return {
         content: [
           { type: "text", text: `❌ Error generating diagram: ${error.message}` }
+        ]
+      };
+    }
+  }
+);
+
+// Tool: Update Confluence Page
+server.tool(
+  "update_confluence_page",
+  {
+    pageId: z.string().describe("Confluence page ID"),
+    content: z.string().describe("HTML content to update the page with"),
+    minorEdit: z.boolean().optional().default(false).describe("Whether this is a minor edit")
+  },
+  async ({ pageId, content, minorEdit }) => {
+    try {
+      const result = await confluenceService.updatePage(pageId, content, { minorEdit });
+
+      return {
+        content: [
+          { type: "text", text: "✅ Page updated successfully\n" },
+          { type: "text", text: JSON.stringify({
+            id: result.id,
+            title: result.title,
+            version: result.version,
+            space: result.space,
+            lastUpdated: result.lastUpdated,
+            updatedBy: result.updatedBy
+          }, null, 2) }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          { type: "text", text: `❌ Error updating page: ${error.message}` }
         ]
       };
     }
